@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Happy Birthday - Blow Out!</title>
+    <style>
+        /* CSS from previous versions (Text, Cake, Candle, Confetti) */
+
+        #background-video {
+    /* Fixed position ensures it stays in the viewport even on scroll */
+    position: fixed; 
+    right: 20;
+    bottom: 0;
+    /* Ensures it covers the entire screen */
+    min-width: 50%; 
+    min-height: 100%;
+    /* Sends the video layer to the back, behind other content */
+    z-index: -1; 
+    /* Maintains aspect ratio and fills the space, cropping if necessary */
+    object-fit: cover; 
+}
+
+/* Optional: Style for the content layer */
+.content {
+    position: relative; /* Keeps content above the video layer */
+    /* Add padding, text styling, and potentially a dark overlay for readability */
+}
+        
+        body {
+            font-family: 'Arial', sans-serif; margin: 0; padding: 0; background-color: #ffe0f0; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; text-align: center; overflow: hidden;
+        }
+        .container {
+            padding: 40px 60px; border-radius: 20px; box-shadow: 0 10px 30px rgba(224, 26, 26, 0.2);
+            position: relative; z-index: 10; margin-bottom: 30px;
+        }
+        #birthday-message {
+            font-size: 3em; color:rgb(17, 233, 222); font-weight: bold; margin-bottom: 20px; animation: bounce 1.5s infinite alternate;
+        }
+        @keyframes bounce {
+            0% { transform: translateY(0); text-shadow: 0 5px 10px rgba(0, 0, 0, 0.2); }
+            100% { transform: translateY(-20px) scale(1.05); color: white; text-shadow: 0 20px 20px rgba(0, 0, 0, 0.3); }
+        }
+        p { font-size: 1.5em; color:white; }
+        
+        /* CAKE STYLING */
+        .cake-container { position: relative; width: 250px; height: 250px; margin-top: 20px; z-index: 10; }
+        .cake-bottom, .cake-middle, .cake-top { position: absolute; background-color: #dd1b76; border-radius: 50%; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2); }
+        .cake-bottom { width: 250px; height: 100px; bottom: 0; left: 0; background-color: #f0c0d8; }
+        .cake-middle { width: 200px; height: 80px; bottom: 70px; left: 25px; background-color: #f7d9e7; }
+        .cake-top { width: 150px; height: 60px; bottom: 120px; left: 50px; background-color: #f7d9e7; }
+        .icing { position: absolute; width: 100%; height: 20px; background-color: #ffffff; border-radius: 50%; top: -10px; left: 0; box-shadow: 0 -3px 5px rgba(0, 0, 0, 0.1); }
+        
+        /* CANDLE STYLING */
+        .candle {
+            position: absolute; width: 20px; height: 70px; background-color: #ffcc00; border-radius: 2px;
+            top: 105px; left: 120px; z-index: 11; cursor: default; /* No click needed now */
+        }
+        .flame {
+            position: absolute; width: 20px; height: 20px; background-color: orange;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; top: -10px; left: 0px;
+            box-shadow: 0 0 10px 2px rgba(255, 165, 0, 0.7);
+            animation: flicker 0.5s infinite alternate; transition: opacity 0.5s ease-out;
+        }
+        @keyframes flicker {
+            0% { transform: scale(1); opacity: 1; box-shadow: 0 0 10px 2px rgba(255, 165, 0, 0.7); }
+            50% { transform: scale(0.95); opacity: 0.9; box-shadow: 0 0 8px 1px rgba(255, 165, 0, 0.5); }
+            100% { transform: scale(1.05); opacity: 1; box-shadow: 0 0 12px 3px rgba(255, 165, 0, 0.8); }
+        }
+        .flame-off {
+            opacity: 0 !important; box-shadow: none !important; animation: none !important;
+        }
+
+        /* Confetti (for brevity, keeping only the final fall keyframes) */
+        .confetti {
+            position: absolute; width: 10px; height: 10px; background-color: var(--color); top: -10px; border-radius: 50%; opacity: 0.8; pointer-events: none; animation: fall var(--duration) linear infinite;
+        }
+        @keyframes fall {
+            to { transform: translateY(105vh) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<video autoplay muted loop playsinline id="background-video">
+    <source src="v1.mp4" type="video/mp4" />
+</video>
+
+    <div class="container">
+        <p id="mic-status">Waiting for Microphone Permission...</p>
+        <h1 id="birthday-message">💕Happy Birthday,Akash 🎉 💕 </h1>
+        <p id="instruction-message">Blow into your microphone to make a wish!</p>
+    </div>
+
+    <div class="cake-container">
+        <div class="cake-top"><div class="icing"></div></div>
+        <div class="cake-middle"><div class="icing"></div></div>
+        <div class="cake-bottom"><div class="icing"></div></div>
+        
+        <div class="candle" id="candle">
+            <div class="flame" id="flame"></div>
+        </div>
+    </div>
+    
+    <audio id="birthday-tune" src="happy_birthday.mp3" preload="auto"></audio>
+
+    <script>
+        // --- 1. Audio and Candle Elements ---
+        const flame = document.getElementById('flame');
+        const message = document.getElementById('birthday-message');
+        const instructionMessage = document.getElementById('instruction-message');
+        const micStatus = document.getElementById('mic-status');
+        const tune = document.getElementById('birthday-tune');
+
+        // --- 2. Configuration for Blow Detection ---
+        const BLOW_THRESHOLD = 50; // Volume level required to trigger blow-out (adjust this!)
+        let isCandleLit = true;
+
+        // --- 3. Blow Out Function (Same as before, but without click handler) ---
+        function blowOutCandle() {
+            if (!isCandleLit) return; 
+
+            isCandleLit = false;
+            flame.classList.add('flame-off');
+            message.textContent = "Your wish is granted! ✨ Happy Birthday. I know we're not together, but I still wanted to reach out. I genuinely hope your day is wonderful, and I'm wishing you nothing but the best for this next year. Take care";
+            instructionMessage.textContent = "Enjoy your day! My soulmate  ❤️🍃";
+            micStatus.style.display = 'none';
+
+            tune.play().catch(error => {
+                console.warn("Audio playback failed:", error);
+            });
+        }
+        
+        // --- 4. Web Audio API Setup for Microphone Analysis ---
+
+        async function startListening() {
+            try {
+                // Request microphone access
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                micStatus.textContent = "Microphone ON. Wait for the green light...";
+
+                // Create Audio Context
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create source from the microphone stream
+                const audioSource = audioContext.createMediaStreamSource(stream);
+                
+                // Create analyser node to process volume data
+                const analyser = audioContext.createAnalyser();
+                analyser.fftSize = 256; // Fast Fourier Transform size
+                
+                // Connect nodes: Source -> Analyser -> Destination (speakers/headphones, though silent)
+                audioSource.connect(analyser);
+                
+                // Prepare array to hold the volume data
+                const bufferLength = analyser.frequencyBinCount;
+                const dataArray = new Uint8Array(bufferLength);
+
+                instructionMessage.textContent = "Blow into your microphone to make a wish! 🌬️";
+
+                // Loop function to continuously analyze volume
+                function analyzeVolume() {
+                    if (!isCandleLit) {
+                        stream.getTracks().forEach(track => track.stop()); // Stop mic when blown out
+                        return;
+                    }
+
+                    // Get the frequency data and calculate the average volume
+                    analyser.getByteFrequencyData(dataArray);
+
+                    let sum = 0;
+                    for(let i = 0; i < bufferLength; i++) {
+                        sum += dataArray[i];
+                    }
+                    // Average volume level (0 to 128)
+                    const averageVolume = sum / bufferLength;
+
+                    // Update status for debugging or user feedback (optional)
+                    // console.log("Volume:", averageVolume.toFixed(2)); 
+                    micStatus.textContent = `Mic Level: ${Math.round(averageVolume)}`;
+
+
+                    // Detection Logic: If the volume exceeds the threshold, trigger blowOutCandle
+                    if (averageVolume > BLOW_THRESHOLD) {
+                        blowOutCandle();
+                    }
+
+                    // Schedule the next check
+                    requestAnimationFrame(analyzeVolume);
+                }
+
+                // Start the analysis loop
+                analyzeVolume();
+
+            } catch (err) {
+                micStatus.textContent = "Error: Microphone access denied or not available.";
+                instructionMessage.textContent = "You can still click the candle to make a wish!";
+                // Fallback to click if microphone fails
+                document.getElementById('candle').onclick = blowOutCandle;
+                console.error("Microphone access error:", err);
+            }
+        }
+
+        // Start the process when the page loads
+        window.onload = startListening;
+        
+        // --- Confetti Generation (keeping for completeness) ---
+
+        const colors = ['#ff0080', '#00ff80', '#8000ff', '#ff8000', '#0080ff', '#ffff00'];
+        const confettiCount = 50;
+
+        function createConfetti() {
+            if (!isCandleLit) return; // Stop confetti if candle is out (optional)
+            for (let i = 0; i < confettiCount; i++) {
+                const confetti = document.createElement('div');
+                confetti.classList.add('confetti');
+
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const duration = `${Math.random() * 3 + 2}s`;
+                const left = `${Math.random() * 100}vw`;
+                const size = `${Math.random() * 5 + 5}px`;
+
+                confetti.style.setProperty('--color', color);
+                confetti.style.setProperty('--duration', duration);
+                confetti.style.left = left;
+                confetti.style.width = size;
+                confetti.style.height = size;
+
+                document.body.appendChild(confetti);
+
+                setTimeout(() => {
+                    confetti.remove();
+                }, parseFloat(duration) * 1000);
+            }
+        }
+
+        createConfetti();
+        setInterval(createConfetti, 5000); 
+    </script>
+<footer>
+    <p style="color:white;"> &copy Made with ❤️ by Akash</p>
+</footer>
+
+</body>
+</html>
